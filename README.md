@@ -1,3 +1,3 @@
 # xiaozhi-yunduanMCP
 前两个文件夹是准备使用小智ai的库进行mcp发送的
-robot_new_navigation是以自己的电脑构建mcp服务器，通过https://xiaozhi.me进行mcp接入
+robot_new_navigation是以自己的电脑构建mcp服务器，通过https://xiaozhi.me 进行mcp接入
