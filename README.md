@@ -45,4 +45,4 @@ void RobotController::RegisterMcpTools(McpServer& mcp_server) {
 }
 ```
 在开发板的物联网初始化流程中，需添加对 AI 可见设备的配置。注意 初始化顺序：MQTT 的初始化必须在物联网初始化之前完成。
-###方法 2：通过 Python 脚本扩展 MCP 工具
+##方法 2：通过 Python 脚本扩展 MCP 工具##
