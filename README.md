@@ -1,6 +1,6 @@
 # xiaozhi-yunduanMCP 
 
-# 任务目标与实现方法
+## 任务目标与实现方法
 
 本次任务的目标是使用搭载小智AI智能体的ESP32识别用户意图，发布命令控制机器人移动到指定位置并执行动作。  
 
@@ -29,7 +29,7 @@ void RobotController::RegisterMcpTools(McpServer& mcp_server) {
 }
 ```
 在开发板的物联网初始化流程中，需添加对 AI 可见设备的配置。注意初始化顺序：在注册MCP工具前需要进行MQTT的初始化
-## 2. 通过小智 AI 控制台的 MCP 接入点
+#### 2. 通过小智 AI 控制台的 MCP 接入点
 
 通过小智 AI 控制台的 MCP 接入点来让智能体使用自己编写的 Python 脚本方案更为方便快捷。文件 `robot_new_navigation.py` 实现了两个 MCP 工具：去办公室抓取/释放、去休息室抓取/释放。后续可以继续增添。
 
