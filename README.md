@@ -63,5 +63,5 @@ if __name__ == "__main__":
 ```
 ## 本次任务学习内容
 ### esp32环境配置 
-参考[https://blog.csdn.net/suoxd123/article/details/147766118](https:\\blog.csdn.net/suoxd123/article/details/147766118)和[https://ccnphfhqs21z.feishu.cn/wiki/F5krwD16viZoF0kKkvDcrZNYnhb](https:\\icnynnzcwou8.feishu.cn/wiki/JEYDwTTALi5s2zkGlFGcDiRknXf)
+参考[https://blog.csdn.net/suoxd123/article/details/147766118](https:\\blog.csdn.net/suoxd123/article/details/147766118)和[https://ccnphfhqs21z.feishu.cn/wiki/F5krwD16viZoF0kKkvDcrZNYnhb](https:\\icnynnzcwou8.feishu.cn/wiki/JEYDwTTALi5s2zkGlFGcDiRknXf)    
 配置、编译、调试、以及如何进行MCP接入可以参考我的csdn的博客： [https://blog.csdn.net/2301_76785393/article/details/149715130?spm=1001.2014.3001.5501](https:\\blog.csdn.net/2301_76785393/article/details/149715130?spm=1001.2014.3001.5501)
