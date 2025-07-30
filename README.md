@@ -65,3 +65,7 @@ if __name__ == "__main__":
 ### esp32环境配置 
 参考[https://blog.csdn.net/suoxd123/article/details/147766118](https:\\blog.csdn.net/suoxd123/article/details/147766118)和[https://ccnphfhqs21z.feishu.cn/wiki/F5krwD16viZoF0kKkvDcrZNYnhb](https:\\icnynnzcwou8.feishu.cn/wiki/JEYDwTTALi5s2zkGlFGcDiRknXf)    
 配置、编译、调试、以及如何进行MCP接入可以参考我的csdn的博客： [https://blog.csdn.net/2301_76785393/article/details/149715130?spm=1001.2014.3001.5501](https:\\blog.csdn.net/2301_76785393/article/details/149715130?spm=1001.2014.3001.5501)
+### MQTT传输协议的学习    
+MQTT是一种轻量级的发布（小智ai发布指令）/订阅消息（机器人）协议，由客户端（Publisher/Subscriber）通过 TCP/TLS 与中央 Broker 建立连接，以主题（Topic）为“地址”进行消息的发布和订阅，支持三种服务质量（QoS 0 “至多一次”、QoS 1 “至少一次”、QoS 2 “仅一次”）以平衡传输可靠性与开销。需要配置MQTT broker地址、端口号、发布的主题、用户名称、客户端id（client_id）、密码等等。
+### MCP协议的学习
+MCP是轻量级的点对点消息协议，主要用于大模型与外部服务之间的调用与数据交换。它以 JSON 格式封装请求与响应，通常包含“method”（方法名）、“params”（参数列表）和“id”（请求标识）等字段，支持调用远程功能、传递参数及异步接收返回结果；在实际应用中，MCP 消息可通过 WebSocket（本次任务小智ai通过此方式接入）、HTTP 或 MQTT 载体传输，使模型能够通过简单、统一的接口与机器人控制、数据库查询或其他微服务无缝对接，从而实现功能扩展与系统解耦。
