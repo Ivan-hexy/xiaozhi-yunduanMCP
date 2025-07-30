@@ -1,20 +1,4 @@
 # xiaozhi-yunduanMCP 
-然后需要在相应开发板的物联网初始化，添加对 AI 可见设备；注意初始化顺序，因为mqtt的初始化在物联网的初始化顺序之前。  
-2.通过小智ai控制台的MCP接入点来让智能体使用自己编写的Python脚本方案更为方便快捷。文件robot_new_navigation.py实现了两个MCP工具：去办公室抓取/释放、去休息室抓取/释放。后续可以继续增添
-@mcp.tool(name="self.robot.gooffice")
-def go_to_office(command: int = 0) -> dict:
-    """机器人目标地点是办公室，通过MQTT协议发送办公室的坐标指令，并附加命令（0:无操作,1:夹取,2:释放）"""
-    try:
-        # 办公室坐标：x=10, y=10, 偏航角=1.2弧度
-        x, y, yaw = 10, 10, 1.2
-        # 连接MQTT并发送消息到办公室主题
-        client = connect_mqtt()
-        client.loop_start()
-        payload = _send_navigation(client, MQTT_TOPIC_GOOFFICE, x, y, yaw, command)
-        client.loop_stop()
-        client.disconnect()
-if __name__ == "__main__":
-    mcp.run(transport="stdio")
 
 # 任务目标与实现方法
 
@@ -44,5 +28,36 @@ void RobotController::RegisterMcpTools(McpServer& mcp_server) {
     );
 }
 ```
-在开发板的物联网初始化流程中，需添加对 AI 可见设备的配置。注意 初始化顺序：MQTT 的初始化必须在物联网初始化之前完成。
-##方法 2：通过 Python 脚本扩展 MCP 工具##
+在开发板的物联网初始化流程中，需添加对 AI 可见设备的配置。注意初始化顺序：在注册MCP工具前需要进行MQTT的初始化
+## 2. 通过小智 AI 控制台的 MCP 接入点
+
+通过小智 AI 控制台的 MCP 接入点来让智能体使用自己编写的 Python 脚本方案更为方便快捷。文件 `robot_new_navigation.py` 实现了两个 MCP 工具：去办公室抓取/释放、去休息室抓取/释放。后续可以继续增添。
+
+```python
+@mcp.tool(name="self.robot.gooffice")
+def go_to_office(command: int = 0) -> dict:
+    """
+    机器人目标地点是办公室，通过 MQTT 协议发送办公室的坐标指令，
+    并附加命令（0: 无操作, 1: 夹取, 2: 释放）
+    """
+    try:
+        # 办公室坐标：x=10, y=10, 偏航角=1.2 弧度
+        x, y, yaw = 10, 10, 1.2
+        # 连接 MQTT 并发送消息到办公室主题
+        client = connect_mqtt()
+        client.loop_start()
+        payload = _send_navigation(
+            client,
+            MQTT_TOPIC_GOOFFICE,
+            x, y, yaw,
+            command
+        )
+        client.loop_stop()
+        client.disconnect()
+        return payload
+    except Exception as e:
+        return {"error": str(e)}
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")
+```
