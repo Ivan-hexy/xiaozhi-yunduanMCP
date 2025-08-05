@@ -1,3 +1,4 @@
+#这个是多线程，并在共享变量上加上了线程锁
 #!/usr/bin/python3
 # coding=UTF-8
 import rospy
@@ -256,3 +257,4 @@ if __name__ == "__main__":
         logger.info("程序被用户中断")
     except Exception as e:
         logger.error(f"程序异常终止: {str(e)}")
+
