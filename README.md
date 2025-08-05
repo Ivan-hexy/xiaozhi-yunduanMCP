@@ -6,7 +6,6 @@
 
 小智AI基于开源项目：[https://github.com/78/xiaozhi-esp32](https://github.com/78/xiaozhi-esp32)，推荐通过 **MCP协议** 控制物联网设备或接入外部工具（工具平台：[https://xiaozhi.me](https://xiaozhi.me)）。  
 
-小智ai重新配网参考：[https://ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb](https:\\ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb)
 ### 实现方式：两种任务发布方法  
 #### 方法1：ESP32代码中直接注册MCP方法（C++）  
 在ESP32的代码里注册MCP方法，通过MQTT协议向服务器发送坐标与控制指令。核心逻辑参考 `main/mcp_server.cc` 中的 `McpServer::AddCommonTools` 函数。  
@@ -74,6 +73,6 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 ##[https://blog.csdn.net/2301_76785393/article/details/148366890?spm=1001.2014.3001.5501](https:\\blog.csdn.net/2301_76785393/article/details/148366890?spm=1001.2014.3001.5501)
 
 ## 注意事项
-小智ai联网    
+小智ai联网:小智ai重新配网参考：[https://ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb](https:\\ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb)    
 查看ubuntu系统的mosquitto是否开启（或者是安装mosquitto），使能、开启mosquitto，然后设置防火墙（没有则不用），查看wlan的ip（ubuntu）    
 windows发送端记得修改ip地址、用户名、密码    
