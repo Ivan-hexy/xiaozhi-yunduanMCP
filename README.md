@@ -72,24 +72,11 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 ##[https://blog.csdn.net/2301_76785393/article/details/148263876?sharetype=blogdetail&sharerId=148263876&sharerefer=PC&sharesource=2301_76785393&spm=1011.2480.3001.8118](https:\\blog.csdn.net/2301_76785393/article/details/148263876?sharetype=blogdetail&sharerId=148263876&sharerefer=PC&sharesource=2301_76785393&spm=1011.2480.3001.8118)
 ##[https://blog.csdn.net/2301_76785393/article/details/148366890?spm=1001.2014.3001.5501](https:\\blog.csdn.net/2301_76785393/article/details/148366890?spm=1001.2014.3001.5501)    
 ### 如何建图（3D）
-1.连接机器人WiFi，使用ubuntu打开终端输入指令 ssh ropod@ropod7 回车输入密码 ==yjy1010A.== 进入机器人（如果使用机器人本机则不用）    
-2.输入指令 service joypadWorker stop 回车输入密码停止机器人服务    
-3.输入指令 roslaunch robot_boot uvc4_3Dcreatmap_ls16_double_wj716.launch 回车进入扫图程序；此时可使用遥控手柄操控机器人在扫描区域内移动，扫描是由顶部多线雷达+底部左前单线雷达同时完成；为了确保单线雷达扫描质量完整，稳定速度控制机器人左前雷达贴近墙壁1.3米内进行移动，且移动时不能同时操控手柄的线速度和角速度摇杆；扫描期间所有物体保持静止状态，面积较大的场地需要分区域来回扫描，扫描完成后按键盘 Ctrl+c 结束。可以rviz -d rviz/map.rviz回车打开，使用rviz实时查看建图情况
-4.导出地图保存在指定文件夹，在电脑文件目录新建文件夹（下面以bag_maps、gong文件名为例）。    
-新建终端依次进入/bag_maps/gong输入指令export  ROS_MASTER_URI=http://uvc4:11311回车。    
-输入指令rosrun  map_server  map_saver  -f  ./gong回车保存地图。    
-完成保存后会出现两个后缀为pgm、yaml的文件。    
-双击打开后缀为yaml的地图文件，在内容第一栏加入name： gong点击保存后关闭。    
-新建一个终端输入指令roscore回车。    
-新建一个终端依次进入存放yaml的文件目录，输入指令source  ~/install/setup.bash回车；输入指令rosrun  global_map  show_map  _map:gong.yaml回车。    
-新建一个终端输入指令rostopic  echo  /clicked_point回车。    
-新建一个终端输入指令rviz  -d  rviz/topo.rviz回车。    
-使用标点按钮publish point在地图上点击需要编辑的区域。    
-此时终端rostopic echo /clicked_point会显示点击后的坐标。    
-打开后缀为yaml的地图文件，在内容下加入nodes:按格式依次填入坐标点x、y、z冒号后的数据（小数点后三位）；加入paths按实际行驶路线将坐标点填入。    
-返回终端重新输入指令source  ~/install/setup.bash回车，输入指令rosrun  global_map  show_map  _map:=gong.yaml回车。此时地图已拓扑完成，返回rviz  -d  rviz/topo.rviz可查看效果。    
-完成后可关闭所有终端。    
-5.使用地图进行导航    
+1.连接机器人WiFi（密码：robot888.），使用ubuntu打开终端输入指令 ssh  kelo@uvc4 回车输入密码 robot20 进入机器人（如果使用机器人本机则不用）    
+2.输入指令 service joypadWorker stop 回车输入密码停止机器人服务（不用卸载，如果不小心卸载了重新安装命令：rosrun robot_upstart install --job joypadWorker --user kelo --logdir ~/log/joypad --setup /etc/ros/setup.bash robot_boot/boot/robot_boot.launch，然后sudo systemctl daemon-reload && sudo systemctl start joypadWorker，最后service joypadWorker restart重启服务）        
+3.输入指令 roslaunch robot_boot uvc4_3Dcreatmap_ls16_double_wj716.launch 回车进入扫图程序；此时可使用遥控手柄操控机器人在扫描区域内移动，扫描是由顶部多线雷达+底部左前单线雷达同时完成；为了确保单线雷达扫描质量完整，稳定速度控制机器人左前雷达贴近墙壁1.3米内进行移动，且移动时不能同时操控手柄的线速度和角速度摇杆；扫描期间所有物体保持静止状态，面积较大的场地需要分区域来回扫描，扫描完成后按键盘 Ctrl+c 结束。    
+4.地图怎么使用参见导航键图文件夹       
+5.使用地图进行导航参见第五章        
 6.确定机器人的初始位置    
 7.设定目标点，开始导航测试    
 ## 注意事项
