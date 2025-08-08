@@ -4,7 +4,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped,Quaternion
 from navigation_msgs.msg import NavigationStatus
 import math
-
+from imrobot_msg.msg import ArmDrive, ArmStatus
 import paho.mqtt.client as mqtt
 import logging
 import ast
@@ -19,6 +19,8 @@ class NavigationManager:
         self.command = 0
         self.nav_status = 0
         self.last_nav_status = None
+        self.last_arm_running_status = True
+        self.arm_running_status = False
 
         # 初始化ROS节点和发布者/订阅者
         self.init_ros()
@@ -28,8 +30,19 @@ class NavigationManager:
     def init_ros(self):
         # 初始化发布者
         self.pub_nav_goal = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=10)
+        self.pub_arm_drive = rospy.Publisher("/arm_drive", ArmDrive, queue_size=10)
         # 订阅导航状态
         rospy.Subscriber("/navigation_status", NavigationStatus, self.update_nav_status, queue_size=10)
+        rospy.Subscriber("/arm_status", ArmStatus, self.update_arm_status, queue_size=10)
+
+    def update_arm_status(self, data):
+        """更新机械臂状态，重点关注running_status"""
+        with self.lock:
+            current_running_status = data.running_status
+            if current_running_status != self.last_arm_running_status:
+                self.arm_running_status = current_running_status
+                self.last_arm_running_status = current_running_status  # 更新记录
+                rospy.loginfo(f"机械臂运行状态更新: running_status={self.arm_running_status}")
 
     def update_nav_status(self, data):
         """更新导航状态"""
@@ -47,7 +60,7 @@ class NavigationManager:
             # 状态为2时发布目标位置
             self.publish_goal()
         elif self.nav_status == 3 and self.command != 0:
-            # 状态为3时发布命令（留空实现）
+            # 状态为3时发布命令
             self.execute_command()
 
     def publish_goal(self):
@@ -75,12 +88,54 @@ class NavigationManager:
         self.nav_target = None
 
     def execute_command(self):
-        """执行命令（留空实现）"""
-        rospy.loginfo(f"收到命令: {self.command}，等待实现...")
-        # 命令执行代码将在这里实现
+        """执行命令（实现机械臂控制）"""
+        rospy.loginfo(f"收到命令: {self.command}，准备执行机械臂操作...")
+        with self.lock:
+            # 检查机械臂是否处于可执行状态（running_status为False）
+            if self.arm_running_status:
+                rospy.logwarn("机械臂正在运行中（running_status=True），无法发布新指令")
+                return
 
-        # 执行后清空命令
-        self.command = 0
+            # 根据命令类型设置机械臂参数
+            arm_cmd = ArmDrive()
+            if self.command == 0:
+                # 搬运指令
+                arm_cmd.x = -88.396
+                arm_cmd.y = 39.867
+                arm_cmd.z = -100.611
+                arm_cmd.rx = -7.378
+                arm_cmd.ry = 89.048
+                arm_cmd.rz = 0
+                rospy.loginfo("执行搬运指令")
+            elif self.command == 1:
+                # 夹取指令
+                arm_cmd.x = -92.346
+                arm_cmd.y = -50.122
+                arm_cmd.z = -53.531
+                arm_cmd.rx = 17.066
+                arm_cmd.ry = 89.044
+                arm_cmd.rz = 0
+                rospy.loginfo("执行夹取指令")
+            elif self.command == 2:
+                # 释放指令
+                arm_cmd.x = -92.346
+                arm_cmd.y = -50.122
+                arm_cmd.z = -53.531
+                arm_cmd.rx = 17.066
+                arm_cmd.ry = 89.044
+                arm_cmd.rz = 0
+                rospy.loginfo("执行释放指令")
+            else:
+                rospy.logwarn(f"未知命令: {self.command}，不执行任何操作")
+                self.command = 0
+                return
+
+            # 发布机械臂控制指令
+            self.pub_arm_drive.publish(arm_cmd)
+            rospy.loginfo(f"已发布机械臂指令: {arm_cmd}")
+
+            # 执行后清空命令
+            self.command = 0
 
     def update_nav_target(self, x, y, yaw, command=0):
         """更新导航目标和命令"""
