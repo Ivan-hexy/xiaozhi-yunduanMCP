@@ -87,4 +87,17 @@ windows发送端记得修改ip地址、用户名、密码
 ##机器人操作步骤    
 1.建图参见上面    
 2.将小智ai连上网（参见上面）
-3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：
+3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：    
+cd C:\Users\ivanhe\Desktop\mcp_mqtt（改为代码文件夹）      
+set MCP_ENDPOINT=<your_mcp_endpoint>（windows）/export MCP_ENDPOINT=<your_mcp_endpoint>（ubuntu）    
+python mcp_pipe.py my_testtry.py（改为自己文件名）    
+4.启动ros节点：mqtt_navigation_receiver和servo_controller（因为需要调试没有写.launch）    
+rosrun task test_xiaozhi.py （文件名）        
+rosrun task serial_demo.py （文件名）    
+5.启动节点观测变量    
+rostopic echo /cmdeffector     
+rostopic echo /end_effector_jiazhua    
+rostopic echo /move_base_simple/goal    
+watch -n 0.1 "rostopic echo /arm_status -n 1"    
+watch -n 0.1 "rostopic echo /navigation_status -n 1"    
+rostopic echo /arm_drive     
