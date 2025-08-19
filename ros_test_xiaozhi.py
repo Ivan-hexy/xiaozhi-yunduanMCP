@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 # coding=UTF-8
 import rospy
-from geometry_msgs.msg import PoseStamped,Quaternion
+from geometry_msgs.msg import PoseStamped, Quaternion
 from navigation_msgs.msg import NavigationStatus
 import math
 from imrobot_msg.msg import ArmDrive, ArmStatus
+from std_msgs.msg import Int32, Bool
 import paho.mqtt.client as mqtt
 import logging
 import ast
@@ -16,11 +17,13 @@ class NavigationManager:
     def __init__(self):
         # 存储导航目标和命令
         self.nav_target = None  # 格式: {'x': x, 'y': y, 'yaw': yaw}
-        self.command = 0
+        self.command = None
         self.nav_status = 0
         self.last_nav_status = None
         self.last_arm_running_status = True
         self.arm_running_status = False
+        self.send_cmd = 99
+        self.waiting_for_end_effector = False  # 标记是否需要等待end_effector话题的消息
 
         # 初始化ROS节点和发布者/订阅者
         self.init_ros()
@@ -31,9 +34,11 @@ class NavigationManager:
         # 初始化发布者
         self.pub_nav_goal = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=10)
         self.pub_arm_drive = rospy.Publisher("/arm_drive", ArmDrive, queue_size=10)
+        self.pub_cmd_end_effector = rospy.Publisher("/cmdeffector", Int32, queue_size=10)
         # 订阅导航状态
         rospy.Subscriber("/navigation_status", NavigationStatus, self.update_nav_status, queue_size=10)
         rospy.Subscriber("/arm_status", ArmStatus, self.update_arm_status, queue_size=10)
+        rospy.Subscriber("end_effector_jiazhua", Bool, self.handle_end_effector, queue_size=10)
 
     def update_arm_status(self, data):
         """更新机械臂状态，重点关注running_status"""
@@ -41,8 +46,15 @@ class NavigationManager:
             current_running_status = data.running_status
             if current_running_status != self.last_arm_running_status:
                 self.arm_running_status = current_running_status
-                self.last_arm_running_status = current_running_status  # 更新记录
                 rospy.loginfo(f"机械臂运行状态更新: running_status={self.arm_running_status}")
+                # 当状态从True（运行中）变为False（已完成）时，发送话题
+                if self.last_arm_running_status is True and current_running_status is False:
+                    rospy.loginfo("机械臂已完成动作，开始末端操作")
+                    self.pub_cmd_end_effector.publish(Int32(self.send_cmd))
+                    rospy.loginfo(f"已将命令 {self.send_cmd} 发送到 /cmdeffector 话题")
+                    self.send_cmd = None
+                # 最后更新last_arm_running_status，确保下次判断正确
+                self.last_arm_running_status = current_running_status
 
     def update_nav_status(self, data):
         """更新导航状态"""
@@ -54,14 +66,26 @@ class NavigationManager:
                 rospy.loginfo(f"当前导航状态: {self.nav_status}")
                 self.check_and_execute()
 
+    def handle_end_effector(self, data):
+        """处理end_effector话题消息"""
+        with self.lock:
+            # 仅在等待状态且消息为True时处理
+            if self.waiting_for_end_effector and data.data and self.command is None:
+                rospy.loginfo("收到end_effector消息为True，将命令设置为3")
+                self.set_arm_command(3)  # 触发命令3的执行
+                self.waiting_for_end_effector = False  # 重置等待状态
+
     def check_and_execute(self):
-        """根据导航状态执行相应操作"""
-        if self.nav_status == 2 and self.nav_target is not None:
-            # 状态为2时发布目标位置
-            self.publish_goal()
-        elif self.nav_status == 3 and self.command != 0:
-            # 状态为3时发布命令
-            self.execute_command()
+        """根据导航状态执行相应操作（支持独立机械臂命令）"""
+        if self.nav_status == 2:
+            if self.nav_target is not None:
+                self.publish_goal()  # 有导航目标则发布
+            elif self.nav_target is None and self.command is not None:
+                self.execute_command()  # 无导航目标但有命令则执行
+        # if self.nav_target is not None:
+        #     self.publish_goal()  # 有导航目标则发布
+        # elif self.nav_target is None and self.command is not None:
+        #     self.execute_command()  # 无导航目标但有命令则执行
 
     def publish_goal(self):
         """发布导航目标"""
@@ -95,18 +119,22 @@ class NavigationManager:
             if self.arm_running_status:
                 rospy.logwarn("机械臂正在运行中（running_status=True），无法发布新指令")
                 return
+            
+            if self.send_cmd in [1, 2]:
+                self.waiting_for_end_effector = True
+                rospy.loginfo(f"命令{self.send_cmd}执行完成，等待end_effector消息...")
 
-            # 根据命令类型设置机械臂参数
+            # 根据命令类型设置机械臂参数（与robot_arm_navigation.py保持一致）
             arm_cmd = ArmDrive()
             if self.command == 0:
-                # 搬运指令
-                arm_cmd.x = -88.396
-                arm_cmd.y = 39.867
+                # 回到原位
+                arm_cmd.x = -183.396
+                arm_cmd.y = 32.867
                 arm_cmd.z = -100.611
                 arm_cmd.rx = -7.378
                 arm_cmd.ry = 89.048
                 arm_cmd.rz = 0
-                rospy.loginfo("执行搬运指令")
+                rospy.loginfo("执行回到原位指令")
             elif self.command == 1:
                 # 夹取指令
                 arm_cmd.x = -92.346
@@ -125,9 +153,18 @@ class NavigationManager:
                 arm_cmd.ry = 89.044
                 arm_cmd.rz = 0
                 rospy.loginfo("执行释放指令")
+            elif self.command == 3:
+                # 搬运指令
+                arm_cmd.x = -88.396
+                arm_cmd.y = 39.867
+                arm_cmd.z = -100.611
+                arm_cmd.rx = -7.378
+                arm_cmd.ry = 89.048
+                arm_cmd.rz = 0
+                rospy.loginfo("执行搬运指令")
             else:
                 rospy.logwarn(f"未知命令: {self.command}，不执行任何操作")
-                self.command = 0
+                self.command = None
                 return
 
             # 发布机械臂控制指令
@@ -135,25 +172,38 @@ class NavigationManager:
             rospy.loginfo(f"已发布机械臂指令: {arm_cmd}")
 
             # 执行后清空命令
-            self.command = 0
+            self.command = None
 
-    def update_nav_target(self, x, y, yaw, command=0):
+    def update_nav_target(self, x, y, yaw):
         """更新导航目标和命令"""
         with self.lock:
             self.nav_target = {'x': x, 'y': y, 'yaw': yaw}
-            self.command = command
-            print(self.nav_target,self.command)
-            rospy.loginfo(f"更新导航目标: x={x}, y={y}, yaw={yaw}, command={command}")
+            rospy.loginfo(f"更新导航目标: x={x}, y={y}, yaw={yaw}")
             # 立即检查是否可以执行
             self.check_and_execute()
 
-# 使用127.0.0.1连接本地Broker
+    def set_arm_command(self, command):
+        """单独设置机械臂命令（不涉及导航目标）"""
+        with self.lock:
+            self.command = command
+            self.send_cmd = command
+            #末端执行器控制
+            #self.pub_cmd_end_effector.publish(Int32(self.command))
+            #rospy.loginfo(f"已将命令 {self.command} 发送到 /cmdeffector 话题")
+
+            self.nav_target = None  # 机械臂命令无需导航目标
+            rospy.loginfo(f"更新机械臂命令: {command}")
+            self.check_and_execute()  # 立即检查并执行
+
+
 MQTT_BROKER = "127.0.0.1"  # 改为回环地址连接本地Broker
 MQTT_PORT = 1883
 MQTT_TOPICS = [
     ("robot/navigation/gooffice", 1),
-    ("robot/navigation/gorestroom", 1)
+    ("robot/navigation/gorestroom", 1),
+    ("robot/arm/control", 1)  # 新增机械臂控制主题
 ]
+
 
 def get_local_ip():
     """获取本机IP地址"""
@@ -166,6 +216,7 @@ def get_local_ip():
     except:
         return "未知"
 
+
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
         rospy.loginfo(f"成功连接到MQTT Broker: {MQTT_BROKER}:{MQTT_PORT}")
@@ -175,8 +226,10 @@ def on_connect(client, userdata, flags, rc, properties=None):
     else:
         rospy.logerr(f"连接失败，错误码: {rc} - {mqtt.connack_string(rc)}")
 
+
 def on_subscribe(client, userdata, mid, granted_qos, properties=None):
     rospy.logdebug(f"订阅确认: MID={mid}, QOS={granted_qos}")
+
 
 def on_disconnect(client, userdata, rc, properties=None):
     if rc != 0:
@@ -186,6 +239,7 @@ def on_disconnect(client, userdata, rc, properties=None):
             client.reconnect()
         except Exception as e:
             rospy.logerr(f"重连失败: {str(e)}")
+
 
 def on_message(client, userdata, msg):
     rospy.loginfo(f"收到消息 [主题: {msg.topic}]")
@@ -198,75 +252,96 @@ def on_message(client, userdata, msg):
         # 尝试解析为Python字典
         try:
             payload = ast.literal_eval(payload_str)
-            rospy.loginfo(f"解析后的导航指令: {payload}")
+            rospy.loginfo(f"解析后的指令: {payload}")
         except:
             # 如果不是Python字典格式，尝试作为纯文本处理
             payload = payload_str
             rospy.logwarn("消息不是字典格式，作为文本处理")
         
-        # 处理导航指令
+        # 处理不同主题的指令
         if "gooffice" in msg.topic:
             handle_navigation("办公室", payload)
         elif "gorestroom" in msg.topic:
             handle_navigation("休息室", payload)
+        elif "arm/control" in msg.topic:  # 新增机械臂指令处理
+            handle_arm_command(payload)
             
     except Exception as e:
         rospy.logerr(f"处理消息时出错: {str(e)}")
 
-def rpy2elements(roll,pitch,yaw):
-    """
-    欧拉角转四元素
-    """
-    cy=math.cos(yaw * 0.5)
-    sy=math.sin(yaw * 0.5)
-    cp=math.cos(pitch * 0.5)
-    sp=math.sin(pitch * 0.5)
-    cr =math.cos(roll * 0.5)
-    sr =math.sin(roll * 0.5)
 
-    q=Quaternion()
+def rpy2elements(roll, pitch, yaw):
+    """欧拉角转四元素"""
+    cy = math.cos(yaw * 0.5)
+    sy = math.sin(yaw * 0.5)
+    cp = math.cos(pitch * 0.5)
+    sp = math.sin(pitch * 0.5)
+    cr = math.cos(roll * 0.5)
+    sr = math.sin(roll * 0.5)
+
+    q = Quaternion()
     q.x = cy * cp * sr - sy * sp * cr
     q.y = sy * cp * sr + cy * sp * cr
     q.z = sy * cp * cr - cy * sp * sr
     q.w = cy * cp * cr + sy * sp * sr
     return q
 
+
 def handle_navigation(destination, payload):
     """处理导航指令"""
     rospy.loginfo(f"开始处理{destination}导航指令")
     
-    # 如果是字典类型，提取参数
+    # 提取导航参数（导航消息不含command，仅x/y/yaw）
     if isinstance(payload, dict):
         x = payload.get('x', 0)
         y = payload.get('y', 0)
         yaw = payload.get('yaw', 0)
-        command = payload.get('command', 0)
         
         rospy.loginfo(f"目标坐标: ({x}, {y}), 朝向: {yaw}弧度")
-        
-        # 命令处理
-        command_actions = {
-            0: "无操作",
-            1: "执行夹取动作",
-            2: "执行释放动作"
-        }
-        action = command_actions.get(command, "未知命令")
-        rospy.loginfo(f"附加命令: {action} (代码: {command})")
 
-        # 更新导航目标
+        # 更新导航目标（导航指令默认不带机械臂命令）
         if nav_manager:
-            nav_manager.update_nav_target(x, y, yaw, command)
+            nav_manager.update_nav_target(x, y, yaw)
     else:
         rospy.loginfo(f"接收到的指令内容: {payload}")
     
     rospy.loginfo(f"{destination}导航指令处理完成\n")
 
-def start_mqtt_client():
-    client = mqtt.Client(
-        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-        client_id=f"nav_receiver_{get_local_ip()}"
-    )
+
+def handle_arm_command(payload):
+    """处理机械臂控制指令"""
+    rospy.loginfo("开始处理机械臂控制指令")
     
+    if isinstance(payload, dict):
+        command = payload.get('command', 0)
+        # 验证命令有效性（与robot_arm_navigation.py保持一致）
+        if command not in [0, 1, 2, 3]:
+            rospy.logwarn(f"无效的机械臂命令: {command}（必须为0-3）")
+            return
+        
+        # 命令描述
+        command_desc = {
+            0: "回到原位",
+            1: "夹取",
+            2: "释放",
+            3: "搬运"
+        }[command]
+        rospy.loginfo(f"机械臂命令: {command_desc}（指令值: {command}）")
+        
+        if nav_manager:
+            nav_manager.set_arm_command(command)  # 调用导航管理器处理命令
+    else:
+        rospy.logwarn("机械臂指令格式不正确，需为字典类型")
+
+
+def start_mqtt_client():
+    # client = mqtt.Client(
+    #     callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+    #     client_id=f"nav_receiver_{get_local_ip()}"
+    # )
+    client = mqtt.Client(
+    client_id=f"nav_receiver_{get_local_ip()}"  # 移除 callback_api_version 参数
+      )
     # 设置回调函数
     client.on_connect = on_connect
     client.on_message = on_message
@@ -277,9 +352,10 @@ def start_mqtt_client():
     try:
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
         rospy.loginfo("启动MQTT监听循环...")
-        client.loop_forever()  # 将在独立线程中运行，不阻塞ROS
+        client.loop_forever()  # 在独立线程中运行，不阻塞ROS
     except Exception as e:
         rospy.logerr(f"连接异常: {str(e)}")
+
 
 # 全局导航管理器实例
 nav_manager = None
