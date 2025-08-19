@@ -86,7 +86,7 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 windows发送端记得修改ip地址、用户名、密码    
 ## 机器人操作步骤    
 1.建图参见上面    
-2.将小智ai连上网（参见上面）
+2.将小智ai连上网（参见上面）    
 3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：    
 cd C:\Users\ivanhe\Desktop\mcp_mqtt（改为代码文件夹）      
 set MCP_ENDPOINT=<your_mcp_endpoint>（windows）/export MCP_ENDPOINT=<your_mcp_endpoint>（ubuntu）    
