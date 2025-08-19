@@ -1,4 +1,3 @@
-
 from mcp.server.fastmcp import FastMCP
 import sys
 import logging
@@ -230,3 +229,4 @@ def go_to_restroom() -> dict:
 if __name__ == "__main__":
     mcp.run(transport="stdio")
     
+
