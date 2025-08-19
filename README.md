@@ -75,7 +75,7 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 1.连接机器人WiFi（密码：robot888.），使用ubuntu打开终端输入指令 ssh  kelo@uvc4 回车输入密码 robot20 进入机器人（如果使用机器人本机则不用）    
 2.输入指令 service joypadWorker stop 回车输入密码停止机器人服务（不用卸载，如果不小心卸载了重新安装命令：rosrun robot_upstart install --job joypadWorker --user kelo --logdir ~/log/joypad --setup /etc/ros/setup.bash robot_boot/boot/robot_boot.launch，然后sudo systemctl daemon-reload && sudo systemctl start joypadWorker，最后service joypadWorker restart重启服务）        
 3.输入指令 roslaunch robot_boot uvc4_3Dcreatmap_ls16_double_wj716.launch 回车进入扫图程序；此时可使用遥控手柄操控机器人在扫描区域内移动，扫描是由顶部多线雷达+底部左前单线雷达同时完成；为了确保单线雷达扫描质量完整，稳定速度控制机器人左前雷达贴近墙壁1.3米内进行移动，且移动时不能同时操控手柄的线速度和角速度摇杆；扫描期间所有物体保持静止状态，面积较大的场地需要分区域来回扫描，扫描完成后按键盘 Ctrl+c 结束。    
-4.地图怎么使用参见导航键图文件夹       
+4.地图怎么使用参见导航建图文件夹       
 5.使用地图进行导航参见第五章        
 6.确定机器人的初始位置    
 7.设定目标点，开始导航测试    
@@ -84,3 +84,7 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 小智ai重新配网参考：[https://ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb](https:\\ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb)    
 查看ubuntu系统的mosquitto是否开启（或者是安装mosquitto），使能、开启mosquitto，然后设置防火墙（没有则不用），查看wlan的ip（ubuntu）    
 windows发送端记得修改ip地址、用户名、密码    
+##机器人操作步骤    
+1.建图参见上面    
+2.将小智ai连上网（参见上面）
+3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：
