@@ -1,260 +1,232 @@
-#这个是多线程，并在共享变量上加上了线程锁
-#!/usr/bin/python3
-# coding=UTF-8
-import rospy
-from geometry_msgs.msg import PoseStamped,Quaternion
-from navigation_msgs.msg import NavigationStatus
-import math
 
-import paho.mqtt.client as mqtt
+from mcp.server.fastmcp import FastMCP
+import sys
 import logging
-import ast
+import paho.mqtt.client as mqtt
 import time
-import socket
-import threading  
 
-class NavigationManager:
-    def __init__(self):
-        # 存储导航目标和命令
-        self.nav_target = None  # 格式: {'x': x, 'y': y, 'yaw': yaw}
-        self.command = 0
-        self.nav_status = 0
+logger = logging.getLogger('RobotController')
 
-        # 初始化ROS节点和发布者/订阅者
-        self.init_ros()
+# 修复Windows控制台的UTF-8编码
+if sys.platform == 'win32':
+    sys.stderr.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding='utf-8')
 
-        self.lock = threading.RLock() 
-
-    def init_ros(self):
-        # 初始化发布者
-        self.pub_nav_goal = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=10)
-        # 订阅导航状态
-        rospy.Subscriber("/navigation_status", NavigationStatus, self.update_nav_status, queue_size=10)
-
-    def update_nav_status(self, data):
-        """更新导航状态"""
-        with self.lock:                          
-            self.nav_status = data.state
-            logger.info(f"当前导航状态: {self.nav_status}")
-            self.check_and_execute()
-
-    def check_and_execute(self):
-        """根据导航状态执行相应操作"""
-        if self.nav_status == 2 and self.nav_target is not None:
-            # 状态为2时发布目标位置
-            self.publish_goal()
-        elif self.nav_status == 3 and self.command != 0:
-            # 状态为3时发布命令（留空实现）
-            self.execute_command()
-
-    def publish_goal(self):
-        """发布导航目标"""
-        if not self.nav_target:
-            logger.warning("没有可发布的导航目标")
-            return
-
-        goal = PoseStamped()
-        goal.header.frame_id = "map"
-        goal.header.stamp = rospy.Time.now()
-        goal.pose.position.x = self.nav_target['x']
-        goal.pose.position.y = self.nav_target['y']
-        goal.pose.position.z = 0.0
-
-        # 将yaw转换为四元数（roll和pitch为0）
-        q = rpy2elements(0, 0, self.nav_target['yaw'])
-        goal.pose.orientation = q
-
-        # 发布目标
-        self.pub_nav_goal.publish(goal)
-        logger.info(f"已发布导航目标: x={self.nav_target['x']}, y={self.nav_target['y']}, yaw={self.nav_target['yaw']}")
-
-        # 发布后清空目标
-        self.nav_target = None
-
-    def execute_command(self):
-        """执行命令（留空实现）"""
-        logger.info(f"收到命令: {self.command}，等待实现...")
-        # 命令执行代码将在这里实现
-
-        # 执行后清空命令
-        self.command = 0
-
-    def update_nav_target(self, x, y, yaw, command=0):
-        """更新导航目标和命令"""
-        with self.lock:
-            self.nav_target = {'x': x, 'y': y, 'yaw': yaw}
-            self.command = command
-            print(self.nav_target,self.command)
-            logger.info(f"更新导航目标: x={x}, y={y}, yaw={yaw}, command={command}")
-            # 立即检查是否可以执行
-            self.check_and_execute()
-
-# 配置日志
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger('MQTT_Receiver')
-
-# 使用127.0.0.1连接本地Broker
-MQTT_BROKER = "127.0.0.1"  # 改为回环地址连接本地Broker
+# MQTT配置
+MQTT_BROKER = "192.168.18.170"
 MQTT_PORT = 1883
-MQTT_TOPICS = [
-    ("robot/navigation/gooffice", 1),
-    ("robot/navigation/gorestroom", 1)
-]
+MQTT_TOPIC_GOOFFICE = "robot/navigation/gooffice"
+MQTT_TOPIC_GORESTROOM = "robot/navigation/gorestroom"
+MQTT_TOPIC_ARM_CONTROL = "robot/arm/control"
 
-def get_local_ip():
-    """获取本机IP地址"""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
-    except:
-        return "未知"
+# 创建MCP服务器
+mcp = FastMCP("RobotController")
 
+# 连接回调函数
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
-        logger.info(f"成功连接到MQTT Broker: {MQTT_BROKER}:{MQTT_PORT}")
-        logger.info(f"本地IP地址: {get_local_ip()}")
-        client.subscribe(MQTT_TOPICS)
-        logger.info(f"已订阅主题: {[t[0] for t in MQTT_TOPICS]}")
+        logger.info("✅ MQTT连接成功")
     else:
-        logger.error(f"连接失败，错误码: {rc} - {mqtt.connack_string(rc)}")
+        logger.error(f"❌ MQTT连接失败，错误码: {rc}")
 
-def on_subscribe(client, userdata, mid, granted_qos, properties=None):
-    logger.debug(f"订阅确认: MID={mid}, QOS={granted_qos}")
+# 发布回调函数
+def on_publish(client, userdata, mid, reason_code, properties):
+    """发布回调函数 (VERSION2 API需要5个参数)"""
+    logger.info(f"📤 消息已发送 (消息ID: {mid})")
 
-def on_disconnect(client, userdata, rc, properties=None):
-    if rc != 0:
-        logger.warning(f"意外断开连接，错误码: {rc}")
-        logger.info("尝试重新连接...")
-        try:
-            client.reconnect()
-        except Exception as e:
-            logger.error(f"重连失败: {str(e)}")
-
-def on_message(client, userdata, msg):
-    logger.info(f"收到消息 [主题: {msg.topic}]")
-    logger.debug(f"原始消息: {msg.payload}")
-    
-    try:
-        payload_str = msg.payload.decode('utf-8')
-        logger.debug(f"解码内容: {payload_str}")
-        
-        # 尝试解析为Python字典
-        try:
-            payload = ast.literal_eval(payload_str)
-            logger.info(f"解析后的导航指令: {payload}")
-        except:
-            # 如果不是Python字典格式，尝试作为纯文本处理
-            payload = payload_str
-            logger.warning("消息不是字典格式，作为文本处理")
-        
-        # 处理导航指令
-        if "gooffice" in msg.topic:
-            handle_navigation("办公室", payload)
-        elif "gorestroom" in msg.topic:
-            handle_navigation("休息室", payload)
-            
-    except Exception as e:
-        logger.error(f"处理消息时出错: {str(e)}")
-
-def rpy2elements(roll,pitch,yaw):
-    """
-    欧拉角转四元素
-    """
-    cy=math.cos(yaw * 0.5)
-    sy=math.sin(yaw * 0.5)
-    cp=math.cos(pitch * 0.5)
-    sp=math.sin(pitch * 0.5)
-    cr =math.cos(roll * 0.5)
-    sr =math.sin(roll * 0.5)
-
-    q=Quaternion()
-    q.w= cy * cp * cr + sy * sp * sr
-    q.x = cy * cp * sr - sy * sp * cr
-    q.y = sy * cp * sr + cy * sp * cr
-    q.z = sy * cp * cr - cy * sp * sr
-    return q
-
-def handle_navigation(destination, payload):
-    """处理导航指令"""
-    logger.info(f"开始处理{destination}导航指令")
-    
-    # 如果是字典类型，提取参数
-    if isinstance(payload, dict):
-        x = payload.get('x', 0)
-        y = payload.get('y', 0)
-        yaw = payload.get('yaw', 0)
-        command = payload.get('command', 0)
-        
-        logger.info(f"目标坐标: ({x}, {y}), 朝向: {yaw}弧度")
-        
-        # 命令处理
-        command_actions = {
-            0: "无操作",
-            1: "执行夹取动作",
-            2: "执行释放动作"
-        }
-        action = command_actions.get(command, "未知命令")
-        logger.info(f"附加命令: {action} (代码: {command})")
-
-        # 更新导航目标
-        if nav_manager:
-            nav_manager.update_nav_target(x, y, yaw, command)
-    else:
-        logger.info(f"接收到的指令内容: {payload}")
-    
-    logger.info(f"{destination}导航指令处理完成\n")
-
-def start_mqtt_client():
-    client = mqtt.Client(
-        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
-        client_id=f"nav_receiver_{get_local_ip()}"
-    )
-    
-    # 设置回调函数
+def connect_mqtt():
+    client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
-    client.on_message = on_message
-    client.on_subscribe = on_subscribe
-    client.on_disconnect = on_disconnect
-    
-    # 设置连接参数
-    try:
-        client.connect(MQTT_BROKER, MQTT_PORT, 60)
-        logger.info("启动MQTT监听循环...")
-        client.loop_forever()  # 将在独立线程中运行，不阻塞ROS
-    except Exception as e:
-        logger.error(f"连接异常: {str(e)}")
+    client.on_publish = on_publish
+    client.connect(MQTT_BROKER, MQTT_PORT, 60)
+    return client
 
-# 全局导航管理器实例
-nav_manager = None
+def _send_navigation(client, topic, x, y, yaw):
+    """发送导航指令（不含command参数）"""
+    payload = {
+        "x": x,
+        "y": y,
+        "yaw": yaw
+    }
+    message = str(payload)
+    logger.info(f"📨 发送消息到主题 '{topic}': {message}")
+    result = client.publish(topic, message, qos=1)
+    
+    # 等待消息确认
+    try:
+        if result.wait_for_publish(timeout=5):
+            logger.info("✅ 消息已确认送达")
+        else:
+            logger.warning("⚠️ 消息确认超时")
+    except Exception as e:
+        logger.error(f"❌ 消息发送错误: {str(e)}")
+    
+    return payload
+
+def _send_arm_command(client, topic, command):
+    """发送机械臂控制命令"""
+    payload = {
+        "command": command
+    }
+    message = str(payload)
+    logger.info(f"📨 发送机械臂命令到主题 '{topic}': {message}")
+    result = client.publish(topic, message, qos=1)
+    
+    # 等待消息确认
+    try:
+        if result.wait_for_publish(timeout=5):
+            logger.info("✅ 机械臂命令已确认送达")
+        else:
+            logger.warning("⚠️ 机械臂命令确认超时")
+    except Exception as e:
+        logger.error(f"❌ 机械臂命令发送错误: {str(e)}")
+    
+    return payload
+
+@mcp.tool(name="self.robot.arm_control")
+def arm_control(command: int) -> dict:
+    """机械臂控制命令
+    仅机械臂操作（拿、放、搬、传递）：无需导航到目标点
+    command参数说明:
+    0: 机械臂回到原位
+    1: 机械臂夹取（拿水）
+    2: 机械臂释放（递给用户）
+    3: 机械臂搬运
+    """
+    try:
+        # 验证命令有效性
+        if command not in [0, 1, 2, 3]:
+            logger.error(f"❌ 无效的机械臂命令: {command}")
+            return {"success": False, "error": "无效的命令，必须是0-3之间的整数"}
+            
+        client = connect_mqtt()
+        client.loop_start()
+        time.sleep(1)  # 等待连接建立
+        
+        if not client.is_connected():
+            logger.error("❌ MQTT连接未建立，无法发送机械臂命令")
+            return {"success": False, "error": "MQTT连接失败"}
+        
+        payload = _send_arm_command(client, MQTT_TOPIC_ARM_CONTROL, command)
+        time.sleep(1)  # 确保消息发送完成
+        client.loop_stop()
+        client.disconnect()
+        
+        # 构建命令描述信息
+        command_desc = {
+            0: "回到原位",
+            1: "夹取",
+            2: "释放",
+            3: "搬运"
+        }[command]
+        
+        return {
+            "success": True,
+            "message": f"已发送机械臂{command_desc}命令（指令值: {command}）",
+            "payload": payload
+        }
+    except Exception as e:
+        logger.exception(f"❌ 发送机械臂命令失败")
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool(name="self.robot.complex_task")
+def complex_task(location: str, arm_command: int) -> dict:
+    """用户要求执行组合任务，使用complex_task函数
+    执行组合任务：先导航到目标地点，再执行机械臂操作。
+    参数说明:
+    location: 目标地点，可选值为 "office"（办公室）或 "restroom"（休息室）
+    arm_command: 机械臂命令，0-3之间的整数（0:回原位，1:夹取/拿水，2:释放，3:搬运）
+    典型场景:
+    - 去办公室拿一瓶水（需要发布导航目标点命令和机械臂夹取命令），去休息室拿一本书（需要发布导航目标点命令和机械臂夹取命令），将水放到休息室（需要发布导航目标点命令和机械臂搬运命令）
+    - 仅导航（去办公室、去休息室）：无需机械臂操作时，单独调用gooffice/gorestroom
+    - 仅机械臂操作（拿、放、搬、传递）：无需导航到目标点，单独调用arm_control
+    """
+    try:
+        # 1. 验证参数有效性
+        if location not in ["office", "restroom"]:
+            return {"success": False, "error": "无效的目标地点，必须是'office'或'restroom'"}
+        if arm_command not in [0, 1, 2, 3]:
+            return {"success": False, "error": "无效的机械臂命令，必须是0-3之间的整数"}
+        
+        # 2. 执行导航
+        logger.info(f"开始执行组合任务：前往{location}，执行机械臂命令{arm_command}")
+        nav_result = None
+        if location == "office":
+            nav_result = go_to_office()
+        else:
+            nav_result = go_to_restroom()
+        
+        # 3. 如果导航失败，直接返回结果
+        if not nav_result.get("success", False):
+            return {
+                "success": False,
+                "error": f"导航失败：{nav_result.get('error', '未知错误')}",
+                "navigation_result": nav_result
+            }
+        
+        # 4. 导航成功后执行机械臂操作
+        arm_result = arm_control(arm_command)
+        
+        # 5. 返回组合结果
+        return {
+            "success": arm_result.get("success", False),
+            "message": f"已完成前往{location}并执行机械臂操作的任务",
+            "navigation_result": nav_result,
+            "arm_control_result": arm_result
+        }
+    except Exception as e:
+        logger.exception(f"❌ 组合任务执行失败")
+        return {"success": False, "error": str(e)}
+
+@mcp.tool(name="self.robot.gooffice")
+def go_to_office() -> dict:
+    """机器人仅前往办公室（纯导航，不执行机械臂操作）
+    注意：若用户要求需要执行拿水、搬运等操作，请使用complex_task函数
+    """
+    try:
+        x, y, yaw = 79.935, 78.372, 0
+        client = connect_mqtt()
+        client.loop_start()
+        time.sleep(1)  # 等待连接建立
+        
+        if not client.is_connected():
+            logger.error("❌ MQTT连接未建立，无法发送消息")
+            return {"success": False, "error": "MQTT连接失败"}
+        
+        payload = _send_navigation(client, MQTT_TOPIC_GOOFFICE, x, y, yaw)
+        time.sleep(1)  # 确保消息发送完成
+        client.loop_stop()
+        client.disconnect()
+        return {"success": True, "message": "已发送前往办公室的指令", "payload": payload}
+    except Exception as e:
+        logger.exception(f"❌ 发送办公室指令失败")
+        return {"success": False, "error": str(e)}
+
+@mcp.tool(name="self.robot.gorestroom")
+def go_to_restroom() -> dict:
+    """机器人仅前往休息室（纯导航，不执行机械臂操作）
+    注意：若用户要求需要执行拿水、搬运等操作，请使用complex_task函数
+    """
+    try:
+        x, y, yaw = 102.66609191894531, 86.97512817382812, 1.800253857219306
+        client = connect_mqtt()
+        client.loop_start()
+        time.sleep(1)  # 等待连接建立
+        
+        if not client.is_connected():
+            logger.error("❌ MQTT连接未建立，无法发送消息")
+            return {"success": False, "error": "MQTT连接失败"}
+        
+        payload = _send_navigation(client, MQTT_TOPIC_GORESTROOM, x, y, yaw)
+        time.sleep(1)  # 确保消息发送完成
+        client.loop_stop()
+        client.disconnect()
+        return {"success": True, "message": "已发送前往休息室的指令", "payload": payload}
+    except Exception as e:
+        logger.exception(f"❌ 发送休息室指令失败")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
-    logger.info("启动MQTT导航指令接收器")
-    logger.info(f"目标Broker: {MQTT_BROKER}:{MQTT_PORT}")
-    logger.info(f"本地IP地址: {get_local_ip()}")
-
-    try:
-        # 初始化ROS节点
-        rospy.init_node('mqtt_navigation_receiver', anonymous=True)
-        # 创建导航管理器
-        nav_manager = NavigationManager()
-        logger.info("导航管理器初始化完成")
-
-        # 启动MQTT客户端线程  
-        mqtt_thread = threading.Thread(target=start_mqtt_client, name='MQTTThread') 
-        mqtt_thread.daemon = True  
-        mqtt_thread.start()  
-        logger.info("MQTT客户端线程已启动")  
-
-        rospy.spin()  
-
-    except KeyboardInterrupt:
-        logger.info("程序被用户中断")
-    except Exception as e:
-        logger.error(f"程序异常终止: {str(e)}")
-
+    mcp.run(transport="stdio")
+    
