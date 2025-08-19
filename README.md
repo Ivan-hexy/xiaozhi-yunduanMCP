@@ -84,7 +84,7 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 小智ai重新配网参考：[https://ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb](https:\\ccnphfhqs21z.feishu.cn/wiki/KGvIwjTQxiTxPCkRbbjcPnsLnMb)    
 查看ubuntu系统的mosquitto是否开启（或者是安装mosquitto），使能、开启mosquitto，然后设置防火墙（没有则不用），查看wlan的ip（ubuntu）    
 windows发送端记得修改ip地址、用户名、密码    
-##机器人操作步骤    
+## 机器人操作步骤    
 1.建图参见上面    
 2.将小智ai连上网（参见上面）
 3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：    
