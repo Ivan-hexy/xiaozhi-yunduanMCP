@@ -85,6 +85,8 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 查看ubuntu系统的mosquitto是否开启（或者是安装mosquitto），使能、开启mosquitto，然后设置防火墙（没有则不用），查看wlan的ip（ubuntu）    
 windows发送端记得修改ip地址、用户名、密码    
 ## 机器人操作步骤    
+先连上机器人WiFi：turtle 密码：robot888. 机器人ssh连接：ssh kelo@uvc4 密码:robot20    
+如果想使用rviz，需要ssh -Y kelo@uvc4，然后export ROS_IP=192.168.1.101（控制电脑的ip，使用ifconfig查询inet的地址），然后export  ROS_MASTER_URI=http://uvc4:11311，rviz -d rviz/nav.rviz
 1.建图参见上面    
 2.将小智ai连上网（参见上面）    
 3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：    
@@ -94,7 +96,9 @@ python mcp_pipe.py my_testtry.py（改为自己文件名）
 4.启动ros节点：mqtt_navigation_receiver和servo_controller（因为需要调试没有写.launch）    
 rosrun task test_xiaozhi.py （文件名）        
 rosrun task serial_demo.py （文件名）    
-5.启动节点观测变量    
+5.更改地图，cd noetic/src/robot_boot/maps；创建地图文件夹（名字都要一样）；cd noetic/src/robot_boot/robots；输入指令nano map.yaml回车打开后把map:后面修改为地图文件名，修改后按键盘Ctrl+O保存，按键盘Ctrl+X退出。        
+6.校准位置：在rivz里面使用2D Pose Estimate校准底盘在地图的所在位置    
+7.启动节点观测变量    
 rostopic echo /cmdeffector     
 rostopic echo /end_effector_jiazhua    
 rostopic echo /move_base_simple/goal    
