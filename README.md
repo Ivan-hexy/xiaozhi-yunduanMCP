@@ -84,7 +84,7 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 1. service joypadWorker stop
 2. roslaunch robot_boot uvc4_online_create_2dmap.launch
 3. rosrun task tf1_to_tf_forwarder.py （如果需要）
-4. rviz，需要ssh kelo@uvc4，然后export ROS_IP=192.168.1.101（控制电脑的ip，使用ifconfig查询inet的地址），然后export  ROS_MASTER_URI=http://uvc4:11311，rviz -d rviz/map.rviz
+4. rviz，需要ssh kelo@uvc4，然后export ROS_IP=192.168.1.101（控制电脑的ip，使用ifconfig查询inet的地址），然后export  ROS_MASTER_URI=http://uvc4:11311, rviz -d rviz/map.rviz
 5. 导出地图保存在指定文件夹，在电脑文件目录新建文件夹；（以bag_maps、gong文件名为例）新建终端依次进入/bag_maps/gong输入指令export  ROS_MASTER_URI=http://uvc4:11311回车。输入指令rosrun  map_server  map_saver  -f  ./gong回车保存地图。现两个后缀为pgm、yaml的文件。双击打开后缀为yaml的地图文件，在内容第一栏加入name： gong点击保存后关闭。    
 6. 新建一个终端输入指令roscore回车。新建一个终端依次进入存放yaml的文件目录，输入指令source  ~/install/setup.bash回车；输入指令rosrun global_map show_map _map:gong.yaml回车。新建一个终端输入指令rostopic  echo  /clicked_point回车。（其余地图拓扑部分看3D建图部分）    
 ## 注意事项
