@@ -89,7 +89,9 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 3. windows发送端记得修改ip地址、用户名、密码
 4. 环境：mqtt用的是1.5版本，costmap用的是1.17.1版本
 5. 总线舵机供电：6V-8.4V
-
+6. 加目标点/操作：    
+（1）mcp服务器：加一个mqtt话题（MQTT_TOPIC_GOCORRIDOR）、加一个服务函数（go_to_corridor）、修改complex_task    
+（2）机器人节点：MQTT_TOPICS和on_message    
 ## 机器人操作步骤    
 先连上机器人WiFi：turtle 密码：robot888. 机器人ssh连接：ssh kelo@uvc4 密码:robot20    
 如果想使用rviz，需要ssh -Y kelo@uvc4，然后export ROS_IP=192.168.1.101（控制电脑的ip，使用ifconfig查询inet的地址），然后export  ROS_MASTER_URI=http://uvc4:11311, rviz -d rviz/nav.rviz
