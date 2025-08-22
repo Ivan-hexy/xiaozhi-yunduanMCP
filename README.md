@@ -93,8 +93,8 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 （1）mcp服务器：加一个mqtt话题（MQTT_TOPIC_GOCORRIDOR）、加一个服务函数（go_to_corridor）、修改complex_task    
 （2）机器人节点：MQTT_TOPICS和on_message    
 ## 机器人操作步骤    
-先连上机器人WiFi：turtle 密码：robot888. 机器人ssh连接：ssh kelo@uvc4 密码:robot20    
-如果想使用rviz，需要ssh -Y kelo@uvc4，然后export ROS_IP=192.168.1.101（控制电脑的ip，使用ifconfig查询inet的地址），然后export  ROS_MASTER_URI=http://uvc4:11311, rviz -d rviz/nav.rviz
+    先连上机器人WiFi：turtle 密码：robot888. 机器人ssh连接：ssh kelo@uvc4 密码:robot20    
+    如果想使用rviz，需要export ROS_IP=192.168.1.101（控制电脑的ip，使用ifconfig查询inet的地址），然后export  ROS_MASTER_URI=http://uvc4:11311，然后ssh -Y kelo@uvc4, rviz -d rviz/nav.rviz
 ### 1.建图参见上面        
 ### 2.将小智ai连上网（参见上面）        
 ### 3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：    
