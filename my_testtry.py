@@ -16,6 +16,7 @@ MQTT_BROKER = "192.168.18.170"
 MQTT_PORT = 1883
 MQTT_TOPIC_GOOFFICE = "robot/navigation/gooffice"
 MQTT_TOPIC_GORESTROOM = "robot/navigation/gorestroom"
+MQTT_TOPIC_GOCORRIDOR = "robot/navigation/gocorridor"
 MQTT_TOPIC_ARM_CONTROL = "robot/arm/control"
 
 # 创建MCP服务器
@@ -134,17 +135,17 @@ def complex_task(location: str, arm_command: int) -> dict:
     """用户要求执行组合任务，使用complex_task函数
     执行组合任务：先导航到目标地点，再执行机械臂操作。
     参数说明:
-    location: 目标地点，可选值为 "office"（办公室）或 "restroom"（休息室）
+    location: 目标地点，可选值为 "office"（办公室）或 "restroom"（休息室）或 "corridor"（走廊）
     arm_command: 机械臂命令，0-3之间的整数（0:回原位，1:夹取/拿水，2:释放，3:搬运）
     典型场景:
     - 去办公室拿一瓶水（需要发布导航目标点命令和机械臂夹取命令），去休息室拿一本书（需要发布导航目标点命令和机械臂夹取命令），将水放到休息室（需要发布导航目标点命令和机械臂搬运命令）
-    - 仅导航（去办公室、去休息室）：无需机械臂操作时，单独调用gooffice/gorestroom
+    - 仅导航（去办公室、去休息室、去走廊）：无需机械臂操作时，单独调用go_to_office/go_to_restroom/go_to_corridor
     - 仅机械臂操作（拿、放、搬、传递）：无需导航到目标点，单独调用arm_control
     """
     try:
-        # 1. 验证参数有效性
-        if location not in ["office", "restroom"]:
-            return {"success": False, "error": "无效的目标地点，必须是'office'或'restroom'"}
+        # 验证参数有效性
+        if location not in ["office", "restroom", "corridor"]:
+            return {"success": False, "error": "无效的目标地点，必须是'office'、'restroom'或'corridor'"}
         if arm_command not in [0, 1, 2, 3]:
             return {"success": False, "error": "无效的机械臂命令，必须是0-3之间的整数"}
         
@@ -153,8 +154,10 @@ def complex_task(location: str, arm_command: int) -> dict:
         nav_result = None
         if location == "office":
             nav_result = go_to_office()
-        else:
+        elif location == "restroom":
             nav_result = go_to_restroom()
+        elif location == "corridor":  
+            nav_result = go_to_corridor()
         
         # 3. 如果导航失败，直接返回结果
         if not nav_result.get("success", False):
@@ -184,7 +187,7 @@ def go_to_office() -> dict:
     注意：若用户要求需要执行拿水、搬运等操作，请使用complex_task函数
     """
     try:
-        x, y, yaw = 79.935, 78.372, 0
+        x, y, yaw = 74.814, 77.791, -1.598
         client = connect_mqtt()
         client.loop_start()
         time.sleep(1)  # 等待连接建立
@@ -208,7 +211,7 @@ def go_to_restroom() -> dict:
     注意：若用户要求需要执行拿水、搬运等操作，请使用complex_task函数
     """
     try:
-        x, y, yaw = 102.66609191894531, 86.97512817382812, 1.800253857219306
+        x, y, yaw = 86.846, 92.542, 0.046
         client = connect_mqtt()
         client.loop_start()
         time.sleep(1)  # 等待连接建立
@@ -226,7 +229,29 @@ def go_to_restroom() -> dict:
         logger.exception(f"❌ 发送休息室指令失败")
         return {"success": False, "error": str(e)}
 
+@mcp.tool(name="self.robot.gocorridor")
+def go_to_corridor() -> dict:
+    """机器人仅前往走廊（纯导航，不执行机械臂操作）
+    注意：若用户要求需要执行拿水、搬运等操作，请使用complex_task函数
+    """
+    try:
+        x, y, yaw = 97.407, 55.386, 1.7  # 走廊坐标
+        client = connect_mqtt()
+        client.loop_start()
+        time.sleep(1)  # 等待连接建立
+        
+        if not client.is_connected():
+            logger.error("❌ MQTT连接未建立，无法发送消息")
+            return {"success": False, "error": "MQTT连接失败"}
+        
+        payload = _send_navigation(client, MQTT_TOPIC_GOCORRIDOR, x, y, yaw)
+        time.sleep(1)  # 确保消息发送完成
+        client.loop_stop()
+        client.disconnect()
+        return {"success": True, "message": "已发送前往走廊的指令", "payload": payload}
+    except Exception as e:
+        logger.exception(f"❌ 发送走廊指令失败")
+        return {"success": False, "error": str(e)}
+        
 if __name__ == "__main__":
     mcp.run(transport="stdio")
-    
-
