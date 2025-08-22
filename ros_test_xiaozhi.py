@@ -73,6 +73,7 @@ class NavigationManager:
             if self.waiting_for_end_effector and data.data and self.command is None:
                 rospy.loginfo("收到end_effector消息为True，将命令设置为3")
                 self.set_arm_command(3)  # 触发命令3的执行
+                rospy.loginfo("夹爪完成任务")
                 self.waiting_for_end_effector = False  # 重置等待状态
 
     def check_and_execute(self):
@@ -201,7 +202,8 @@ MQTT_PORT = 1883
 MQTT_TOPICS = [
     ("robot/navigation/gooffice", 1),
     ("robot/navigation/gorestroom", 1),
-    ("robot/arm/control", 1)  # 新增机械臂控制主题
+    ("robot/navigation/gocorridor", 1), 
+    ("robot/arm/control", 1)
 ]
 
 
@@ -263,7 +265,9 @@ def on_message(client, userdata, msg):
             handle_navigation("办公室", payload)
         elif "gorestroom" in msg.topic:
             handle_navigation("休息室", payload)
-        elif "arm/control" in msg.topic:  # 新增机械臂指令处理
+        elif "gocorridor" in msg.topic:  
+            handle_navigation("走廊", payload)
+        elif "arm/control" in msg.topic:
             handle_arm_command(payload)
             
     except Exception as e:
@@ -384,3 +388,4 @@ if __name__ == "__main__":
         rospy.loginfo("程序被用户中断")
     except Exception as e:
         rospy.logerr(f"程序异常终止: {str(e)}")
+        
