@@ -98,21 +98,23 @@ MCP是轻量级的点对点消息协议，主要用于大模型与外部服务�
 ### 1.建图参见上面        
 ### 2.将小智ai连上网（参见上面）        
 ### 3.启动智能体的MCP功能，在小智ai控制台找mcp接入点，依次输入：    
-cd C:\Users\ivanhe\Desktop\mcp_mqtt（改为代码文件夹）      
-set MCP_ENDPOINT=<your_mcp_endpoint>（windows）/export MCP_ENDPOINT=<your_mcp_endpoint>（ubuntu）    
-python mcp_pipe.py my_testtry.py（改为自己文件名）    
+    cd C:\Users\ivanhe\Desktop\mcp_mqtt（改为代码文件夹）      
+    set MCP_ENDPOINT=<your_mcp_endpoint>（windows）/export MCP_ENDPOINT=<your_mcp_endpoint>（ubuntu）    
+    python mcp_pipe.py my_testtry.py（改为自己文件名）    
 ### 4.启动ros节点：        
-mqtt_navigation_receiver和servo_controller（因为需要调试没有写.launch）    
-rosrun task test_xiaozhi.py （文件名）        
-rosrun task serial_demo.py （文件名）    
+    mqtt_navigation_receiver和servo_controller（因为需要调试没有写.launch）    
+    rosrun task test_xiaozhi.py （文件名）        
+    rosrun task serial_demo.py （文件名）    
 ### 5.更改地图        
-cd noetic/src/robot_boot/maps；创建地图文件夹（名字都要一样）；cd noetic/src/robot_boot/robots；输入指令nano map.yaml回车打开后把map:后面修改为地图文件名，修改后按键盘Ctrl+O保存，按键盘Ctrl+X退出。        
+    cd noetic/src/robot_boot/maps；创建地图文件夹（名字都要一样）；    
+    cd noetic/src/robot_boot/robots；    
+    输入指令nano map.yaml回车打开后把map:后面修改为地图文件名，修改后按键盘Ctrl+O保存，按键盘Ctrl+X退出。            
 ### 6.校准位置    
 在rivz里面使用2D Pose Estimate校准底盘在地图的所在位置    
 ### 7.启动节点观测变量        
-rostopic echo /cmdeffector     
-rostopic echo /end_effector_jiazhua    
-rostopic echo /move_base_simple/goal    
-watch -n 0.1 "rostopic echo /arm_status -n 1"    
-watch -n 0.1 "rostopic echo /navigation_status -n 1"    
-rostopic echo /arm_drive     
+    rostopic echo /cmdeffector     
+    rostopic echo /end_effector_jiazhua    
+    rostopic echo /move_base_simple/goal    
+    watch -n 0.1 "rostopic echo /arm_status -n 1"    
+    watch -n 0.1 "rostopic echo /navigation_status -n 1"    
+    rostopic echo /arm_drive     
