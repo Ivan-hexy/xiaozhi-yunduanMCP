@@ -202,7 +202,7 @@ if __name__ == "__main__":
                 # 处理后重置命令值（避免重复执行）
                 cmd_value = None
 
-            # 根据命令发送对应指令
+            # 抓取
             if current_cmd == 1:
                 print(f"发送移动指令: 位置{POS_ONE}，时间1000ms")
                 controller.send_command(1, SERVO_MOVE_TIME_WRITE, POS_ONE, 1000)
@@ -210,6 +210,7 @@ if __name__ == "__main__":
                 print(f"发送移动指令: 位置{POS_TWO}，时间1000ms")
                 controller.send_command(1, SERVO_MOVE_TIME_WRITE, POS_TWO, 1000)
                 time.sleep(1.5)  
+            # 释放
             elif current_cmd == 2:
                 print(f"发送移动指令: 位置{POS_ONE}，时间1000ms")
                 controller.send_command(1, SERVO_MOVE_TIME_WRITE, POS_ONE, 1000)
@@ -235,7 +236,9 @@ if __name__ == "__main__":
                     pub.publish(current_result)
                     print(f"发布到end_effector: {current_result}")
 
-                    controller.expected_position = None
+                    if current_result:  
+                        controller.expected_position = None
+                        print("夹爪成功到达")
 
             # 循环间隔
             time.sleep(0.5)
